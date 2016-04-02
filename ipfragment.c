@@ -36,10 +36,6 @@ typedef struct ipstruct{
 	struct rte_ring * r;
 } IpImpl;
 
-struct ring_buf{
-	int type;
-	void * ptr;
-};
 
 //hash
 int addrtoHash(struct in_addr Src, struct in_addr Dest){
@@ -173,14 +169,13 @@ fflush(stdout);
 				//return;
 				IpImpl * impl = (IpImpl *)handle;
 				struct ring_buf * ptr = (struct ring_buf *)rte_malloc("ring_buf",sizeof(struct ring_buf),0);
-				void **obj = rte_malloc("rp",sizeof(void *)*2,0);
-				printf("In 1.\n");
+				//void **obj = rte_malloc("rp",sizeof(void *)*2,0);
 				if(ptr == NULL)OUTOFMEM
 				ptr -> type = 1;
 				ptr -> ptr = table -> ipFra;
-				obj[0] = ptr;
-				rte_ring_enqueue(impl -> r, &obj[0]);
-				printf("In 2.\n");
+				//obj[0] = ptr;
+				rte_ring_enqueue(impl -> r, ptr);
+
 				//这边考虑如何把分片包断开
 				if(table -> next){
 					table -> next -> pre = table -> pre;
@@ -191,13 +186,10 @@ fflush(stdout);
 				{
 					fa -> packets = NULL;
 				}
-				ptr = NULL;
-				rte_ring_dequeue(impl -> r, &obj[0]);
-				printf("In 3.\n");
-				ptr = obj[0];
-				printf("In ring IP: %d %p.\n",ptr -> type, ptr -> ptr);
-
-
+			//	ptr = NULL;
+			//	rte_ring_dequeue(impl -> r, (void **)&ptr);
+				ptr = getPacket(handle);
+				printf("In ring %d IP:%p.\n",ptr -> type, ptr -> ptr);
 			}else
 			printf("Job not done!\n");
 			//else the fragement not completed, just continue.
@@ -310,6 +302,12 @@ void ipDeFragment(void * handle, struct ip * iphead,struct sk_buff *skb){
 	offset &= IP_OFFSET;
 	if(((flags & IP_MF) ==0)&&(offset ==0)){// no fragment.
 		//printf("No fragment.\n");
+		struct ring_buf * ptr = (struct ring_buf *)rte_malloc("rp",sizeof(struct ring_buf *),0);
+		if(ptr ==NULL)OUTOFMEM
+		ptr -> type = 0;
+		ptr -> ptr = iphead;
+		rte_ring_enqueue(impl -> r, ptr);
+		
 	}
 	else
 	{
@@ -339,6 +337,14 @@ void initIpTable(struct hashtable* tables){
 }
 
 //the following is the module interface
+struct ring_buf * getPacket(void *handle){
+	struct ring_buf * ptr = NULL;
+	IpImpl * impl = (IpImpl *)handle;
+	rte_ring_dequeue(impl -> r, (void **)&ptr);
+	if(ptr != NULL)
+	printf("Ptr in getPacket: type:%d addr:%p.\n",ptr -> type, ptr -> ptr);
+	return ptr;
+}
 
 void init(Stream * pl, const char *name, void ** handle){
 
@@ -351,7 +357,7 @@ void init(Stream * pl, const char *name, void ** handle){
 	pl -> init = init;
 	pl -> addPacket = dpdk_ipDeFragment;
 	//empty
-	pl -> getPacket = NULL;
+	pl -> getPacket = getPacket;
 	pl -> getStream = NULL;
 	pl -> realsePacket = NULL;
 	pl -> checkTimeOut = NULL;

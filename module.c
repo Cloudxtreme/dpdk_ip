@@ -3,6 +3,14 @@
 
 #include "module.h"
 
+/*int saveOneRingbuf(struct rte_ring * r, struct ring_buf * ptr){
+	rte_ring_dequeue(r,ptr);
+}
+
+struct ring_buf * readOneRingbuf(struct rte_ring *){
+	
+}*/
+
 void initModule(plugin *pl,int argc ,char * argv[]){
 	int i =0, j = 0;
 	pl -> num = argc;

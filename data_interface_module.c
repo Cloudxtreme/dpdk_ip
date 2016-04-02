@@ -312,7 +312,7 @@ int main(int argc, char *argv[]){
 	int i = 0;
 	char *path[2];
 	path[0] = (char *)malloc(100);
-	strcpy(path[0],"/home/nachtz/dpdk-2.2.0/ip_module/ip_module.so");
+	strcpy(path[0],"/home/nachtz/dpdk-2.2.0/ip_module/build/lib/ip_module.so");
 	initDPDK(argc,argv);
 	//init and load the plgin here.
 	initModule(&ip,1,path);

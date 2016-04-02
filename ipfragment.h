@@ -50,10 +50,11 @@ struct hashtable{
 };
 
 int addrtoHash(struct in_addr Src, struct in_addr Dest);
+struct ring_buf * getPacket(void * handle);
 void addToHashTable(void *handle, struct hashtable * table, struct ip * iphead, struct sk_buff *skb);
 void addToAddr(void *handle, struct srcDstAddr * table, struct ip * iphead, struct sk_buff *skb);
 void adddToipFra(void *handle, struct srcDstAddr * fa, struct ipPacketHead * table, struct ip *iphead, struct sk_buff * skb);
-
+struct ring_buf * getPacket(void *handle);
 //insert an ip packet into table
 void ipDeFragment(void * handle, struct ip * iphead,struct sk_buff *skb);
 //init the ip fragment table
