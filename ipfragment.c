@@ -5,6 +5,7 @@
 #include <rte_malloc.h>
 #include <arpa/inet.h>
 #include <netinet/ip.h>
+#include <linux/jiffies.h>
 #include <rte_ring.h>
 #include "ipfragment.h"
 #include "module.h"
@@ -335,7 +336,18 @@ void initIpTable(struct hashtable* tables){
 	for (i = 0; i < TABLESIZE; i++)
 		tables[i]. addr = NULL;
 }
-
+//here is an endless loop.
+void checkTimeOut(void * handle){
+	int i =0;
+	struct hashtable * tables = (IpImpl *)handle -> talbes;
+	while(1){
+		for (i = 0; i < TABLESIZE; i++){
+			if(tables[i].addr != NULL){//means this table is not empty
+				
+			}
+		}
+	}
+}
 //the following is the module interface
 struct ring_buf * getPacket(void *handle){
 	struct ring_buf * ptr = NULL;
@@ -354,6 +366,7 @@ void init(Stream * pl, const char *name, void ** handle){
 		return ;
 	}
 	//point to func.
+	pl -> timeout = 10 * HZ;//timeout value is 10s the same as the default value.
 	pl -> init = init;
 	pl -> addPacket = dpdk_ipDeFragment;
 	//empty

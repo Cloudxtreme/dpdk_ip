@@ -26,6 +26,7 @@ struct ipFragment{
 //	struct Info info;//the info of packet head, need change.
 	int offset;
 	int length;
+	unsigned long myJiffer;//each time, insert a packet, update the jiffer.
 };
 
 struct ipPacketHead{
