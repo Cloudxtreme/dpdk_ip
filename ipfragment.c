@@ -343,10 +343,24 @@ void checkTimeOut(void * handle){
 	while(1){
 		for (i = 0; i < TABLESIZE; i++){
 			if(tables[i].addr != NULL){//means this table is not empty
-				
+				struct srcDstAddr * tmp1 = tables[i].addr;
+				while(tmp1){
+					if(tmp ->packets){
+						struct ipPacketHead *tmp2 = tmp -> packets;
+						while(tmp2){
+							if(tmp2 -> ipFra){
+								//check whether timeout here.
+							}
+							tmp2 = tmp2 -> next;
+						}
+					}
+					tmp1 = tmp1 -> next;
+
+				}
 			}
 		}
 	}
+	sleep(1);
 }
 //the following is the module interface
 struct ring_buf * getPacket(void *handle){
