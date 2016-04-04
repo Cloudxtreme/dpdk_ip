@@ -5,7 +5,6 @@
 #include <rte_malloc.h>
 #include <arpa/inet.h>
 #include <netinet/ip.h>
-#include <linux/jiffies.h>
 #include <rte_ring.h>
 #include "ipfragment.h"
 #include "module.h"
@@ -32,11 +31,12 @@
 *4. 
 */
 
-extern unsigned long volatile jiffies;
 
 typedef struct ipstruct{
 	struct hashtable tables[TABLESIZE];
 	struct rte_ring * r;
+	struct ipFragment *tail;
+	struct ipFragment *head;
 } IpImpl;
 
 
@@ -59,6 +59,7 @@ static void sentPacket(struct ipPacketHead * table){
 //将数据加入到分片链表中，其中，分片一定是唯一的，关于重复能不能重复这一点有待商榷
 void adddToipFra(void *handle, struct srcDstAddr * fa, struct ipPacketHead * table, struct ip *iphead, struct sk_buff * skb)
 {
+	IpImpl * impl = (IpImpl *)handle;
 	if (((ntohs(iphead->ip_off)&~IP_OFFSET) & IP_MF) == 0){
 		table->MF = 0;
 	}
@@ -70,12 +71,23 @@ printf("2 ");
 			table->ipFra->next = NULL;
 			table->ipFra->seq = NULL;
 			table->ipFra->skb = skb;
-			table-> ipFra -> myJiffies = jiffies;
+			table-> ipFra -> myJiffies = getTime();
 			table->fraSeq = table->ipFra;
 			table->ipFra->length = iphead -> ip_len;
 			table->ipFra->offset = ntohs(iphead->ip_off) & IP_OFFSET;
-
-			
+			table -> ipFra -> timer_pre = impl -> tail;
+			impl -> tail -> timer_next = table -> ipFra;
+			impl -> tail = table -> ipFra;
+			impl -> tail -> timer_next = NULL;
+			/*
+			table->ipFra->timer_pre -> timer_next = table -> ipFra -> timer_next;
+			if(table->ipFra->timer_next)
+				table->ipFra->timer_next ->timer_pre = table -> ipFra -> timer_pre;
+			impl -> tail -> timer_next = table -> ipFra;
+			table -> ipFra -> timer_pre = impl -> tail;
+			impl -> tail = table -> ipFra;
+			impl -> tail -> timer_next = NULL;
+			*/
 		}
 	}
 	else{
@@ -84,7 +96,16 @@ printf("2 ");
 		//2.按数据包偏移位排序。
 		//3.记录完成后检查是否是一个完整的分片包。
 		//4.不完整就结束程序，完整就将包发到数据包池中。
-		table -> ipFra -> myJiffies = jiffies;//just change the first's myJiffies.
+		//timer_link
+		table -> ipFra -> myJiffies = getIime();//just change the first's myJiffies.
+		table->ipFra->timer_pre -> timer_next = table -> ipFra -> timer_next;
+		if(table->ipFra->timer_next)
+			table->ipFra->timer_next ->timer_pre = table -> ipFra -> timer_pre;
+		impl -> tail -> timer_next = table -> ipFra;
+		table -> ipFra -> timer_pre = impl -> tail;
+		impl -> tail = table -> ipFra;
+		impl -> tail -> timer_next = NULL;
+
 		struct ipFragment * current, *pre,*newFrag;
 		newFrag = (struct ipFragment *)rte_malloc("Fra", sizeof(struct ipFragment),0);
 		if (newFrag == NULL){printf("Out of Mem2!\n");return ;}
@@ -172,7 +193,7 @@ fflush(stdout);
 				//here has two things to do.
 				//1.
 				//return;
-				IpImpl * impl = (IpImpl *)handle;
+				
 				struct ring_buf * ptr = (struct ring_buf *)rte_malloc("ring_buf",sizeof(struct ring_buf),0);
 				//void **obj = rte_malloc("rp",sizeof(void *)*2,0);
 				if(ptr == NULL)OUTOFMEM
@@ -190,6 +211,16 @@ fflush(stdout);
 				}else
 				{
 					fa -> packets = NULL;
+				}
+				if(impl -> tail == table -> ipFra)
+				{
+					impl -> tail = table -> ipFra ->timer_pre;
+					impl -> tail ->timer_next = NULL;
+				}
+				else
+				{
+					table->ipFra->timer_pre -> timer_next = table -> ipFra -> timer_next;
+					table->ipFra->timer_next ->timer_pre = table -> ipFra -> timer_pre;
 				}
 			//	ptr = NULL;
 			//	rte_ring_dequeue(impl -> r, (void **)&ptr);
@@ -342,39 +373,20 @@ void initIpTable(struct hashtable* tables){
 }
 //here is an endless loop.
 void checkTimeOut(void * handle){
-	int i =0;
-	struct hashtable * tables = (IpImpl *)handle -> talbes;
-	unsigned long timeout = (IpImpl *)handle -> timeout;
-	while(1){
-		for (i = 0; i < TABLESIZE; i++){
-			if(tables[i].addr != NULL){//means this table is not empty
-				struct srcDstAddr * tmp1 = tables[i].addr;
-				while(tmp1){
-					if(tmp ->packets){
-						struct ipPacketHead *tmp2 = tmp -> packets;
-						while(tmp2){
-							if(tmp2 -> ipFra){
-								//check whether timeout here.
-								if(ISTIMEOUT(tmp2 -> ipFra -> myJiffies,timeout)){
-									//release the packet
-									printf("Found TimeOut.\n");
-								}
-								else
-								{
-									printf("Not timeout.\n");
-								}
-							}
-							tmp2 = tmp2 -> next;
-						}
-					}
-					tmp1 = tmp1 -> next;
-
-				}
-			}
+	IpImpl * impl = (IpImpl *)handle;
+	unsigned long timeout = impl -> timeout;
+	struct ipFragment tmp = impl -> head -> timer_next;
+	while(tmp){
+		if(ISTIMEOUT(tmp -> myJiffies, timeout)){//timeout
+			//do timeout
+			
+			//move to next point.
+			tmp = tmp -> timer_next;
+			imp -> head ->timer_next = tmp;
 		}
+		else
+			break;
 	}
-	//this may need change.
-	sleep(1);
 }
 //the following is the module interface
 struct ring_buf * getPacket(void *handle){
@@ -404,6 +416,10 @@ void init(Stream * pl, const char *name, void ** handle){
 	pl -> checkTimeOut = NULL;
 	pl -> showState = NULL;
 	impl -> r = rte_ring_lookup(name);
+	impl -> tail = NULL;
+	impl -> head = (struct ipFragment *)rte_malloc("tailhead",sizeof(struct ipFragment),0);
+	impl -> head -> timer_pre = impl -> head;
+	impl -> head -> timer_next = NULL;
 	if(impl -> r == NULL){
 		printf("Ring %s not found ,now creating a new ring.\n",name);
 		impl -> r = rte_ring_create(name,4096, -1, 0);

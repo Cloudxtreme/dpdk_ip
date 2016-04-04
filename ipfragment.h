@@ -23,6 +23,8 @@ hashtable -> srcDestAddr -> ipPacketHead -> ipFragment
 struct ipFragment{
 	struct ipFragment * next;//this to help judge whether the fragment is complete.
 	struct ipFragment * seq;//this to mark the coming sequence of the fragement.
+	struct ipFragment * timer_next;//this to help judge whether the fragment is complete.
+	struct ipFragment * timer_pre;//this to mark the coming sequence of the fragement.
 	struct sk_buff * skb;//the data of the ip packet.
 //	struct Info info;//the info of packet head, need change.
 	int offset;
