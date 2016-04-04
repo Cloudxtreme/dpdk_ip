@@ -37,6 +37,7 @@ typedef struct ipstruct{
 	struct rte_ring * r;
 	struct ipFragment *tail;
 	struct ipFragment *head;
+	unsigned long timeout;
 } IpImpl;
 
 
@@ -64,6 +65,7 @@ void adddToipFra(void *handle, struct srcDstAddr * fa, struct ipPacketHead * tab
 		table->MF = 0;
 	}
 printf("2 ");
+fflush(stdout);
 	if (table->ipFra == NULL){
 		table->ipFra = (struct ipFragment *)rte_malloc("ipFra", sizeof(struct ipFragment),0);
 		if (table ->ipFra == NULL ){printf("Out of Mem1!\n");return ;}
@@ -75,10 +77,18 @@ printf("2 ");
 			table->fraSeq = table->ipFra;
 			table->ipFra->length = iphead -> ip_len;
 			table->ipFra->offset = ntohs(iphead->ip_off) & IP_OFFSET;
+			if(impl -> tail == NULL){
+				impl -> tail = table -> ipFra;
+				table -> ipFra -> timer_pre = impl -> head;
+				impl -> head -> timer_next = table -> ipFra;
+				impl -> tail -> timer_next = NULL;
+								
+			}else{
 			table -> ipFra -> timer_pre = impl -> tail;
 			impl -> tail -> timer_next = table -> ipFra;
 			impl -> tail = table -> ipFra;
 			impl -> tail -> timer_next = NULL;
+			}
 			/*
 			table->ipFra->timer_pre -> timer_next = table -> ipFra -> timer_next;
 			if(table->ipFra->timer_next)
@@ -97,7 +107,7 @@ printf("2 ");
 		//3.记录完成后检查是否是一个完整的分片包。
 		//4.不完整就结束程序，完整就将包发到数据包池中。
 		//timer_link
-		table -> ipFra -> myJiffies = getIime();//just change the first's myJiffies.
+		table -> ipFra -> myJiffies = getTime();//just change the first's myJiffies.
 		table->ipFra->timer_pre -> timer_next = table -> ipFra -> timer_next;
 		if(table->ipFra->timer_next)
 			table->ipFra->timer_next ->timer_pre = table -> ipFra -> timer_pre;
@@ -105,7 +115,7 @@ printf("2 ");
 		table -> ipFra -> timer_pre = impl -> tail;
 		impl -> tail = table -> ipFra;
 		impl -> tail -> timer_next = NULL;
-
+		printf("\naddr:%ld %ld %ld\n",(long)table -> ipFra, (long)table -> ipFra -> timer_pre, (long)table -> ipFra->timer_next);	
 		struct ipFragment * current, *pre,*newFrag;
 		newFrag = (struct ipFragment *)rte_malloc("Fra", sizeof(struct ipFragment),0);
 		if (newFrag == NULL){printf("Out of Mem2!\n");return ;}
@@ -198,30 +208,47 @@ fflush(stdout);
 				//void **obj = rte_malloc("rp",sizeof(void *)*2,0);
 				if(ptr == NULL)OUTOFMEM
 				ptr -> type = 1;
+printf("1");
+fflush(stdout);
 				ptr -> ptr = table -> ipFra;
 				//obj[0] = ptr;
 				rte_ring_enqueue(impl -> r, ptr);
-
+		printf("\naddr:%ld %ld %ld\n",(long)table -> ipFra, (long)table -> ipFra -> timer_pre, (long)table -> ipFra->timer_next);	
+				if(impl -> tail == table -> ipFra)
+				{
+printf("3.1");
+fflush(stdout);
+					impl -> tail = table -> ipFra ->timer_pre;
+					impl -> tail ->timer_next = NULL;
+				}
+				else
+				{
+printf("3.2");
+fflush(stdout);
+					printf("%ld %ld", (long)table -> ipFra -> timer_pre, (long)table -> ipFra->timer_next);	
+fflush(stdout);
+					table->ipFra->timer_pre -> timer_next = table -> ipFra -> timer_next;
+printf("3.3");
+fflush(stdout);					
+					table->ipFra->timer_next ->timer_pre = table -> ipFra -> timer_pre;
+				}
 				//这边考虑如何把分片包断开
 				if(table -> next){
 					table -> next -> pre = table -> pre;
 				}//here just for test ring
+printf("2");
+fflush(stdout);
 				if(table -> pre){
 				table -> pre -> next = table -> next;
 				}else
 				{
 					fa -> packets = NULL;
 				}
-				if(impl -> tail == table -> ipFra)
-				{
-					impl -> tail = table -> ipFra ->timer_pre;
-					impl -> tail ->timer_next = NULL;
-				}
-				else
-				{
-					table->ipFra->timer_pre -> timer_next = table -> ipFra -> timer_next;
-					table->ipFra->timer_next ->timer_pre = table -> ipFra -> timer_pre;
-				}
+printf("3");
+fflush(stdout);
+				
+printf("4");
+fflush(stdout);
 			//	ptr = NULL;
 			//	rte_ring_dequeue(impl -> r, (void **)&ptr);
 				ptr = getPacket(handle);
@@ -238,6 +265,7 @@ fflush(stdout);
 //将数据加入到数据包链表中，其中，数据包链表以ip的id为唯一标识
 void addToAddr(void *handle, struct srcDstAddr * table, struct ip * iphead, struct sk_buff *skb){
 printf("3 ");
+fflush(stdout);
 	if (table->packets == NULL){//empty packet.
 		table->packets = (struct ipPacketHead *)rte_malloc("packets", sizeof(struct ipPacketHead),0);
 		if (table->packets == NULL){printf("Out of Mem3!\n");return ;}
@@ -285,6 +313,7 @@ printf("3 ");
 //将数据加入到Hash表中，其中，hash表中的表项以源目ip作为唯一标识。
 void addToHashTable(void *handle, struct hashtable * table, struct ip * iphead, struct sk_buff *skb){
 printf("2 ");
+fflush(stdout);
 	if (table->addr == NULL){
 		table->addr = (struct srcDstAddr *)rte_malloc("srcaddr", sizeof(struct srcDstAddr),0);
 		if (table->addr == NULL)
@@ -331,6 +360,7 @@ printf("2 ");
 	}
 }
 void ipDeFragment(void * handle, struct ip * iphead,struct sk_buff *skb){
+	printf("1\n");
 	IpImpl * impl = (IpImpl *)handle;
 	int index = addrtoHash( iphead->ip_src, iphead->ip_dst);
 	int offset = ntohs(iphead ->ip_off);
@@ -375,14 +405,14 @@ void initIpTable(struct hashtable* tables){
 void checkTimeOut(void * handle){
 	IpImpl * impl = (IpImpl *)handle;
 	unsigned long timeout = impl -> timeout;
-	struct ipFragment tmp = impl -> head -> timer_next;
+	struct ipFragment *tmp = impl -> head -> timer_next;
 	while(tmp){
 		if(ISTIMEOUT(tmp -> myJiffies, timeout)){//timeout
 			//do timeout
 			
 			//move to next point.
 			tmp = tmp -> timer_next;
-			imp -> head ->timer_next = tmp;
+			impl -> head ->timer_next = tmp;
 		}
 		else
 			break;
@@ -406,14 +436,15 @@ void init(Stream * pl, const char *name, void ** handle){
 		return ;
 	}
 	//point to func.
-	pl -> timeout = 10 * HZ;//timeout value is 10s the same as the default value.
+	pl -> timeout = 10;//timeout value is 10s the same as the default value.
+	impl -> timeout = 10;
 	pl -> init = init;
 	pl -> addPacket = dpdk_ipDeFragment;
 	//empty
 	pl -> getPacket = getPacket;
 	pl -> getStream = NULL;
 	pl -> realsePacket = NULL;
-	pl -> checkTimeOut = NULL;
+	pl -> checkTimeOut = checkTimeOut;
 	pl -> showState = NULL;
 	impl -> r = rte_ring_lookup(name);
 	impl -> tail = NULL;

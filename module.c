@@ -33,6 +33,7 @@ Stream loadModule(char *path){//here path is the same as name, this need change 
 		printf("Error in load %s.\n",path);
 		return s;
 	}
+	s.timeout = 10;//default value is 10s.
 	s.addPacket = dlsym(dp, "addPacket");
 	s.getStream = dlsym(dp, "getStream");
 	s.getPacket = dlsym(dp, "getPacket");
@@ -45,4 +46,15 @@ Stream loadModule(char *path){//here path is the same as name, this need change 
 //just for test
 void unloadModule(char *path){
 	printf("%s.\n",path);
+}
+
+inline unsigned long getTime(void){
+	struct timeval tv;
+	gettimeofday(&tv,NULL);
+	return tv.tv_sec;
+}
+
+
+inline int time_after(unsigned long known, unsigned long unknown){
+	return ((long)known - (long)unknown)>=0;
 }

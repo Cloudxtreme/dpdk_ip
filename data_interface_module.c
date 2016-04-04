@@ -10,7 +10,7 @@
 #include <arpa/inet.h>
 #include <netinet/ip.h>
 #include <rte_ring.h>
-
+//#include <rte_timer.h>
 #include "ipfragment.h"
 #include "module.h"
 
@@ -43,6 +43,8 @@ struct rte_mempool *mbuf_pool;
 static unsigned nb_ports;
 //ip,tcp,udp
 static struct rte_ring *r[3] = {NULL,NULL,NULL};//ring pool, 2 for recv and send 
+//timer
+//static struct rte_timer timer0;
 /*
 **int IPFRAG_ENTRY(struct ip *iph, int pktlen, int thread_id);
 **int IP_ENTRY(struct ip *iph, int pktlen,int thread_id);
@@ -159,6 +161,8 @@ static void rxPacket(uint8_t nb_ports)
 			struct rte_mbuf *bufs[BURST_SIZE];
 			uint16_t nb_rx = rte_eth_rx_burst(port, 0, bufs, BURST_SIZE);
 			if (unlikely(nb_rx == 0))continue;
+			else
+				printf("Get %d packets.\n",nb_rx);
 			//deal with the packet recived
 			uint16_t i;
 			for (i = 0; i < nb_rx; i++)
@@ -305,6 +309,10 @@ static int  initDPDK(int argc, char * argv[]){
 	initRing(0, IP_RING, 4096, -1);//name, ring_size, socket_id_any, 0
 	initRing(1, TCP_RING, 4096, -1);
 	initRing(2, UDP_RING, 4096, -1);
+
+	/*init the timer*/
+	//rte_timer_subsystem_init();
+
 	return 0;
 }
 

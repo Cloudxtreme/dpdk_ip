@@ -29,7 +29,7 @@ struct ipFragment{
 //	struct Info info;//the info of packet head, need change.
 	int offset;
 	int length;
-	unsigned long myJiffes;//each time, insert a packet, update the jiffer.
+	unsigned long myJiffies;//each time, insert a packet, update the jiffer.
 };
 
 struct ipPacketHead{
@@ -52,7 +52,7 @@ struct srcDstAddr{
 struct hashtable{
 	struct srcDstAddr * addr;
 };
-
+void checkTimeOut(void * handle);
 int addrtoHash(struct in_addr Src, struct in_addr Dest);
 struct ring_buf * getPacket(void * handle);
 void addToHashTable(void *handle, struct hashtable * table, struct ip * iphead, struct sk_buff *skb);
