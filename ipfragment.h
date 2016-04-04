@@ -8,6 +8,7 @@ struct sk_buff {
 	int truesize;
 };
 /*need change*/
+/*not use now*/
 struct Info{
 	unsigned char * mac;//mac addr
 	struct ip * ipHead;
@@ -26,7 +27,7 @@ struct ipFragment{
 //	struct Info info;//the info of packet head, need change.
 	int offset;
 	int length;
-	unsigned long myJiffer;//each time, insert a packet, update the jiffer.
+	unsigned long myJiffes;//each time, insert a packet, update the jiffer.
 };
 
 struct ipPacketHead{

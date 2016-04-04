@@ -32,6 +32,8 @@
 *4. 
 */
 
+extern unsigned long volatile jiffies;
+
 typedef struct ipstruct{
 	struct hashtable tables[TABLESIZE];
 	struct rte_ring * r;
@@ -68,6 +70,7 @@ printf("2 ");
 			table->ipFra->next = NULL;
 			table->ipFra->seq = NULL;
 			table->ipFra->skb = skb;
+			table-> ipFra -> myJiffies = jiffies;
 			table->fraSeq = table->ipFra;
 			table->ipFra->length = iphead -> ip_len;
 			table->ipFra->offset = ntohs(iphead->ip_off) & IP_OFFSET;
@@ -81,6 +84,7 @@ printf("2 ");
 		//2.按数据包偏移位排序。
 		//3.记录完成后检查是否是一个完整的分片包。
 		//4.不完整就结束程序，完整就将包发到数据包池中。
+		table -> ipFra -> myJiffies = jiffies;//just change the first's myJiffies.
 		struct ipFragment * current, *pre,*newFrag;
 		newFrag = (struct ipFragment *)rte_malloc("Fra", sizeof(struct ipFragment),0);
 		if (newFrag == NULL){printf("Out of Mem2!\n");return ;}
@@ -340,6 +344,7 @@ void initIpTable(struct hashtable* tables){
 void checkTimeOut(void * handle){
 	int i =0;
 	struct hashtable * tables = (IpImpl *)handle -> talbes;
+	unsigned long timeout = (IpImpl *)handle -> timeout;
 	while(1){
 		for (i = 0; i < TABLESIZE; i++){
 			if(tables[i].addr != NULL){//means this table is not empty
@@ -350,6 +355,14 @@ void checkTimeOut(void * handle){
 						while(tmp2){
 							if(tmp2 -> ipFra){
 								//check whether timeout here.
+								if(ISTIMEOUT(tmp2 -> ipFra -> myJiffies,timeout)){
+									//release the packet
+									printf("Found TimeOut.\n");
+								}
+								else
+								{
+									printf("Not timeout.\n");
+								}
 							}
 							tmp2 = tmp2 -> next;
 						}
