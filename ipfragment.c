@@ -475,15 +475,19 @@ void checkTimeOut(void * handle){
 	unsigned long timeout = impl -> timeout;
 	struct ipPacketHead*tmp = impl -> head -> timer_next;
 	while(tmp){
+		printf("cto:%ld\n",(long)tmp);
 		if(ISTIMEOUT(tmp -> myJiffies, timeout)){//timeout
 			//do timeout
-			
+			printf("Found time out %ld.\n",tmp ->myJiffies);
 			//move to next point.
 			tmp = tmp -> timer_next;
 			impl -> head ->timer_next = tmp;
 		}
 		else
+		{
+			printf("checktimeout done.\n");
 			break;
+		}
 	}
 }
 //the following is the module interface

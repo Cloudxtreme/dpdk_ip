@@ -10,6 +10,7 @@
 #include <arpa/inet.h>
 #include <netinet/ip.h>
 #include <rte_ring.h>
+#include <unistd.h>
 //#include <rte_timer.h>
 #include "ipfragment.h"
 #include "module.h"
@@ -122,7 +123,13 @@ static struct udphdr * mbufToUDP(struct rte_mbuf * buf){
 }*/
 //3.2.16 只发送头部到环中，可能需要改成发送完整的包到环中。
 static void handleMbuf(struct rte_mbuf * mbuf){
+	static int count = 0;
 	struct ipv4_hdr * iphdr = mbufToIP(mbuf);
+	count ++;
+	if (count > 10){
+		sleep(10);
+		ip.modules[0].checkTimeOut(ip.modules[0].handle);
+	}
 	ip.modules[0].addPacket(ip.modules[0].handle,(struct rte_mbuf *)iphdr);//need change.
 	//dpdk_ipDeFragment((struct rte_mbuf *)iphdr);
 	//todo:拷贝一份iphdr到环，然后通知相关函数
