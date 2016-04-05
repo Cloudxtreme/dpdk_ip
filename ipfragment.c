@@ -64,7 +64,7 @@ void adddToipFra(void *handle, struct srcDstAddr * fa, struct ipPacketHead * tab
 	if (((ntohs(iphead->ip_off)&~IP_OFFSET) & IP_MF) == 0){
 		table->MF = 0;
 	}
-printf("\n2 ");
+printf("\n2 in addr\n ");
 fflush(stdout);
 	if (table->ipFra == NULL){
 		table->ipFra = (struct ipFragment *)rte_malloc("ipFra", sizeof(struct ipFragment),0);
@@ -135,6 +135,7 @@ fflush(stdout);
 		current = table->fraSeq;
 		pre = current;
 printf("3 ");
+fflush(stdout);
 		while (current){
 			pre = current;
 			current = current->seq;
@@ -248,6 +249,7 @@ fflush(stdout);
 				{
 					fa -> packets = NULL;
 				}
+				realsePacket(handle, ptr->ptr);
 //printf("3");
 //fflush(stdout);
 				
@@ -255,8 +257,9 @@ fflush(stdout);
 //fflush(stdout);
 			//	ptr = NULL;
 			//	rte_ring_dequeue(impl -> r, (void **)&ptr);
-				ptr = getPacket(handle);
-				printf("In ring %d IP:%p.\n",ptr -> type, ptr -> ptr);
+				//ptr = getPacket(handle);
+				//printf("In ring %d IP:%p.\n",ptr -> type, ptr -> ptr);
+				
 			}else
 			printf("Job not done!\n");
 			//else the fragement not completed, just continue.
@@ -281,8 +284,8 @@ fflush(stdout);
 			table->packets->ipFra = NULL;
 			table->packets->head = iphead;
 			table->packets->MF = 1;
-//printf("1");
-//fflush(stdout);
+printf("1");
+fflush(stdout);
 			table->packets->myJiffies = getTime();
 			if(impl -> tail){
 				impl ->tail -> timer_next = table->packets;
@@ -300,15 +303,15 @@ fflush(stdout);
 			}
 			adddToipFra(handle, table, table->packets, iphead, skb);
 		}
-//printf("2");
-//fflush(stdout);
+printf("2");
+fflush(stdout);
 	}
 	else{
 		struct ipPacketHead * current, *pre;
 		current = table->packets;
 		pre = current;
-//printf("3");
-//fflush(stdout);
+printf("3");
+fflush(stdout);
 		while (current){
 			if (current->head->ip_id == iphead->ip_id){//two fragment of one packet.
 				current->myJiffies = getTime();
@@ -333,31 +336,31 @@ fflush(stdout);
 				pre = current;
 				current = current->next;
 			}
-//printf("4");
-//fflush(stdout);
+printf("4");
+fflush(stdout);
 			if (current == NULL)
 			{
 				pre->next = (struct ipPacketHead *)rte_malloc("ipPacket", sizeof(struct ipPacketHead),0);
 				if (pre->next == NULL){printf("Out of Mem4!\n");return ;}
 				else{
-//printf("4.1");
-//fflush(stdout);
+printf("4.1");
+fflush(stdout);
 					pre->next->pre = pre;
 					pre->next->head = iphead;
 					pre->next->ipFra = NULL;
 					pre->next->next = NULL;
 					pre->next->MF = 1;
 					pre->next->myJiffies = getTime();
-//printf("4.2");
-//fflush(stdout);
+printf("4.2");
+fflush(stdout);
 					if(impl -> tail){
 						impl ->tail -> timer_next = pre->next;
 						if(pre->next -> timer_pre)
 							pre->next -> timer_pre -> timer_next = pre->next -> timer_next;
 						if(pre->next -> timer_next)
 							pre->next -> timer_next -> timer_pre = pre->next -> timer_pre;
-//printf("4.3");
-//fflush(stdout);						pre->next->timer_pre = impl ->tail;
+printf("4.3");
+fflush(stdout);						pre->next->timer_pre = impl ->tail;
 						impl -> tail -> timer_next = NULL;
 					} else{
 						if(pre->next -> timer_pre)
@@ -365,14 +368,14 @@ fflush(stdout);
 						impl -> head -> timer_next = pre->next;
 						pre->next -> timer_next = NULL;
 						impl -> tail = pre->next;
-//printf("4.4");
-//fflush(stdout);				
+printf("4.4");
+fflush(stdout);				
 					}
-//printf("4.5");
-//fflush(stdout);		
+printf("4.5");
+fflush(stdout);		
 				adddToipFra(handle, table, pre->next, iphead, skb);
-//printf("4.6");
-//fflush(stdout);		
+printf("4.6");
+fflush(stdout);		
 			}
 		}
 
@@ -493,7 +496,10 @@ void checkTimeOut(void * handle){
 }
 
 void realsePacket(void *handle, void * _mem){//mem's type is struct ipPacketHead *
+	printf("\nIN realse.\n");
+	fflush(stdout);
 	struct ipPacketHead * mem = (struct ipPacketHead *)_mem;
+	IpImpl *impl = (IpImpl *)handle;
 	//realse the ipFragment packets.
 	struct ipFragment * tmp = mem -> ipFra,*tmp1;
 	while(tmp){
@@ -507,8 +513,8 @@ void realsePacket(void *handle, void * _mem){//mem's type is struct ipPacketHead
 		if(mem -> next)
 			mem -> next -> pre = mem -> pre;
 	}else{//this mem is the first of the addr, so get the addr first.
-		struct srcDstAddr * table = &(IpImpl *)handle -> tables[addrtoHash(mem->ip->ip_src, mem->ip->->ip_dst)];
-		table -> ipPacketHead = mem -> next;
+		struct srcDstAddr * table =(struct srcDstAddr *) &impl -> tables[addrtoHash(mem->head->ip_src, mem->head->ip_dst)];
+		table -> packets = mem -> next;
 		if(mem -> next)
 			mem -> pre = NULL;
 	}

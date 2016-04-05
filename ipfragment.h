@@ -61,6 +61,7 @@ struct ring_buf * getPacket(void * handle);
 void addToHashTable(void *handle, struct hashtable * table, struct ip * iphead, struct sk_buff *skb);
 void addToAddr(void *handle, struct srcDstAddr * table, struct ip * iphead, struct sk_buff *skb);
 void adddToipFra(void *handle, struct srcDstAddr * fa, struct ipPacketHead * table, struct ip *iphead, struct sk_buff * skb);
+void realsePacket(void *handle, void * _mem);
 struct ring_buf * getPacket(void *handle);
 //insert an ip packet into table
 void ipDeFragment(void * handle, struct ip * iphead,struct sk_buff *skb);
