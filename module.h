@@ -28,7 +28,7 @@ typedef struct common_stream{
 	void (*addPacket)(void *handle,  struct rte_mbuf *m);
 	void (*getStream)(void *handle);
 	struct ring_buf * (*getPacket)(void *handle);
-	void (*realsePacket)(void *handle);
+	void (*realsePacket)(void *handle, void * mem);
 	void (*init)(struct common_stream * pl,const char * name, void ** handle);//create a handle here
 	//checkTimeOut must be an endless loop
 	void (*checkTimeOut)(void *handle);
