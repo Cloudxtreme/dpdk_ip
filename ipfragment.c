@@ -391,7 +391,7 @@ fflush(stdout);
 		if (table->addr == NULL)
 			{printf("Out of Mem5!\n");return ;}
 		else{
-
+ 
 			table->addr->Src = iphead->ip_src;
 			table->addr->Dst = iphead->ip_dst;
 			table->addr->next = NULL;
