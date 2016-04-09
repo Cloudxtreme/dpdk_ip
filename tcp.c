@@ -533,7 +533,7 @@ add_from_skb(struct tcp_stream * a_tcp, struct half_stream * rcv,
     }
     rcv->urgdata = data[rcv->urg_ptr - this_seq];
     rcv->count_new_urg = 1;
-    notify(a_tcp, rcv);
+   //notify(a_tcp, rcv);
     rcv->count_new_urg = 0;
     rcv->urg_seen = 0;
     rcv->urg_count++;
@@ -541,7 +541,7 @@ add_from_skb(struct tcp_stream * a_tcp, struct half_stream * rcv,
     if (to_copy2 > 0) {
       if (rcv->collect) {
 	add2buf(rcv, (char *)(data + lost + to_copy + 1), to_copy2);
-	notify(a_tcp, rcv);
+	//notify(a_tcp, rcv);
       }
       else {
 	rcv->count += to_copy2;
@@ -553,7 +553,7 @@ add_from_skb(struct tcp_stream * a_tcp, struct half_stream * rcv,
     if (datalen - lost > 0) {
       if (rcv->collect) {
 	add2buf(rcv, (char *)(data + lost), datalen - lost);
-	notify(a_tcp, rcv);
+	//notify(a_tcp, rcv);
       }
       else {
 	rcv->count += datalen - lost;
@@ -681,9 +681,9 @@ prune_queue(struct half_stream * rcv, struct tcphdr * this_tcphdr)
 
  // nids_params.syslog(NIDS_WARN_TCP, NIDS_WARN_TCP_BIGQUEUE, ugly_iphdr, this_tcphdr);
   while (p) {
-    free(p->data);
+    rte_free(p->data);
     tmp = p->next;
-    free(p);
+    rte_free(p);
     p = tmp;
   }
   rcv->list = rcv->listtail = 0;
@@ -747,7 +747,7 @@ nids_find_tcp_stream(void * handle, struct tuple4 *addr)
   TcpImpl * impl = (TcpImpl *)handle;
   hash_index = mk_hash_index(*addr); 
   for (a_tcp = impl -> tcp_stream_table[hash_index];
-       a_tcp && memcmp(&a_tcp->addr, addr, sizeof (struct tuple4));
+       a_tcp && rte_memcmp(&a_tcp->addr, addr, sizeof (struct tuple4));
        a_tcp = a_tcp->next_node);
   return a_tcp ? a_tcp : 0;
 }
@@ -757,7 +757,7 @@ void tcp_exit(void * handle)
 {
 TcpImpl * impl = (TcpImpl *)handle;
   int i;
-  struct lurker_node *j;
+ ¡¢¡¢ struct lurker_node *j;
   struct tcp_stream *a_tcp, *t_tcp;
 
   if (!impl->tcp_stream_table || !impl->streams_pool)
@@ -767,10 +767,10 @@ TcpImpl * impl = (TcpImpl *)handle;
     while(a_tcp) {
       t_tcp = a_tcp;
       a_tcp = a_tcp->next_node;
-      for (j = t_tcp->listeners; j; j = j->next) {
-          t_tcp->nids_state = NIDS_EXITING;
-	  (j->item)(t_tcp, &j->data);
-      }
+     // for (j = t_tcp->listeners; j; j = j->next) {
+     //     t_tcp->nids_state = NIDS_EXITING;
+	 // (j->item)(t_tcp, &j->data);
+    //  }
       nids_free_tcp_stream(t_tcp);
     }
   }
@@ -796,35 +796,35 @@ process_tcp(void * handle, u_char * data, int skblen)
   struct tcp_stream *a_tcp;
   struct half_stream *snd, *rcv;
 
-  impl -> ugly_iphdr = this_iphdr;
+  impl ->ugly_iphdr = this_iphdr;
   iplen = ntohs(this_iphdr->ip_len);
   if ((unsigned)iplen < 4 * this_iphdr->ip_hl + sizeof(struct tcphdr)) {
-    nids_params.syslog(NIDS_WARN_TCP, NIDS_WARN_TCP_HDR, this_iphdr,
-		       this_tcphdr);
+   // nids_params.syslog(NIDS_WARN_TCP, NIDS_WARN_TCP_HDR, this_iphdr,
+	//	       this_tcphdr);
     return;
   } // ktos sie bawi
   
   datalen = iplen - 4 * this_iphdr->ip_hl - 4 * this_tcphdr->th_off;
   
   if (datalen < 0) {
-    nids_params.syslog(NIDS_WARN_TCP, NIDS_WARN_TCP_HDR, this_iphdr,
-		       this_tcphdr);
+   // nids_params.syslog(NIDS_WARN_TCP, NIDS_WARN_TCP_HDR, this_iphdr,
+	//	       this_tcphdr);
     return;
   } // ktos sie bawi
 
   if ((this_iphdr->ip_src.s_addr | this_iphdr->ip_dst.s_addr) == 0) {
-    nids_params.syslog(NIDS_WARN_TCP, NIDS_WARN_TCP_HDR, this_iphdr,
-		       this_tcphdr);
+ //   nids_params.syslog(NIDS_WARN_TCP, NIDS_WARN_TCP_HDR, this_iphdr,
+//		       this_tcphdr);
     return;
   }
-  if (!(this_tcphdr->th_flags & TH_ACK))
-    detect_scan(this_iphdr);//define in scan.c
-  if (!nids_params.n_tcp_streams) return;
-  if (my_tcp_check(this_tcphdr, iplen - 4 * this_iphdr->ip_hl,
-		   this_iphdr->ip_src.s_addr, this_iphdr->ip_dst.s_addr)) {
-    nids_params.syslog(NIDS_WARN_TCP, NIDS_WARN_TCP_HDR, this_iphdr,
-		       this_tcphdr);
-    return;
+ // if (!(this_tcphdr->th_flags & TH_ACK))
+ //   detect_scan(this_iphdr);//define in scan.c
+ // if (!nids_params.n_tcp_streams) return;
+ // if (my_tcp_check(this_tcphdr, iplen - 4 * this_iphdr->ip_hl,
+	//	   this_iphdr->ip_src.s_addr, this_iphdr->ip_dst.s_addr)) {
+    //nids_params.syslog(NIDS_WARN_TCP, NIDS_WARN_TCP_HDR, this_iphdr,
+	//	       this_tcphdr);
+ //   return;
   }
 #if 0
   check_flags(this_iphdr, this_tcphdr);
@@ -884,13 +884,13 @@ process_tcp(void * handle, u_char * data, int skblen)
      return;
 
   if ((this_tcphdr->th_flags & TH_RST)) {
-    if (a_tcp->nids_state == NIDS_DATA) {
-      struct lurker_node *i;
+  //  if (a_tcp->nids_state == NIDS_DATA) {
+   //   struct lurker_node *i;
 
-      a_tcp->nids_state = NIDS_RESET;
-      for (i = a_tcp->listeners; i; i = i->next)
-	(i->item) (a_tcp, &i->data);
-    }
+   //   a_tcp->nids_state = NIDS_RESET;
+  //    for (i = a_tcp->listeners; i; i = i->next)
+	//(i->item) (a_tcp, &i->data);
+ //   }
     nids_free_tcp_stream(a_tcp);
     return;
   }
@@ -907,12 +907,13 @@ process_tcp(void * handle, u_char * data, int skblen)
 	a_tcp->client.state = TCP_ESTABLISHED;
 	a_tcp->client.ack_seq = ntohl(this_tcphdr->th_ack);
 	{
-	  struct proc_node *i;//define in proc_node
-	  struct lurker_node *j;
+	//  struct proc_node *i;//define in proc_node
+//	  struct lurker_node *j;
 	  void *data;
 	  
 	  a_tcp->server.state = TCP_ESTABLISHED;
-	  a_tcp->nids_state = NIDS_JUST_EST;
+	  
+	  /*a_tcp->nids_state = NIDS_JUST_EST;
 	  for (i = tcp_procs; i; i = i->next) {//should found where is the val
 	    char whatto = 0;
 	    char cc = a_tcp->client.collect;
@@ -928,7 +929,8 @@ process_tcp(void * handle, u_char * data, int skblen)
 	    if (sc < a_tcp->server.collect)
 	      whatto |= COLLECT_sc;
 	    if (scu < a_tcp->server.collect_urg)
-	      whatto |= COLLECT_scu;
+	      whatto |= COLLECT_scu;*/
+		/*
 	    if (nids_params.one_loop_less) {
 	    		if (a_tcp->client.collect >=2) {
 	    			a_tcp->client.collect=cc;
@@ -938,8 +940,8 @@ process_tcp(void * handle, u_char * data, int skblen)
 	    			a_tcp->server.collect=sc;
 	    			whatto&=~COLLECT_sc;
 	    		}
-	    }  
-	    if (whatto) {
+	    }*/  
+	 /*   if (whatto) {
 	      j = mknew(struct lurker_node);
 	      j->item = i->item;
 	      j->data = data;
@@ -947,12 +949,12 @@ process_tcp(void * handle, u_char * data, int skblen)
 	      j->next = a_tcp->listeners;
 	      a_tcp->listeners = j;
 	    }
-	  }
+	  }*/
 	  if (!a_tcp->listeners) {
 	    nids_free_tcp_stream(a_tcp);
 	    return;
 	  }
-	  a_tcp->nids_state = NIDS_DATA;
+	  //a_tcp->nids_state = NIDS_DATA;
 	}
       }
       // return;
@@ -963,11 +965,11 @@ process_tcp(void * handle, u_char * data, int skblen)
     if (rcv->state == FIN_SENT)
       rcv->state = FIN_CONFIRMED;
     if (rcv->state == FIN_CONFIRMED && snd->state == FIN_CONFIRMED) {
-      struct lurker_node *i;
+  //    struct lurker_node *i;
 
-      a_tcp->nids_state = NIDS_CLOSE;
-      for (i = a_tcp->listeners; i; i = i->next)
-	(i->item) (a_tcp, &i->data);
+   //   a_tcp->nids_state = NIDS_CLOSE;
+  //    for (i = a_tcp->listeners; i; i = i->next)
+	//(i->item) (a_tcp, &i->data);
       //nids_free_tcp_stream(a_tcp);
       //add the stream to the ring_pool
       add_to_ringpool(handle,a_tcp);
@@ -984,7 +986,7 @@ process_tcp(void * handle, u_char * data, int skblen)
   if (!a_tcp->listeners)
     nids_free_tcp_stream(a_tcp);
 }
-
+/*
 void
 nids_discard(struct tcp_stream * a_tcp, int num)
 {
@@ -1002,7 +1004,7 @@ void
 nids_unregister_tcp(void (*x))//unused
 {
   unregister_callback(&tcp_procs, x);
-}
+}*/
 
 int
 tcp_init(void * handle, int size)
@@ -1019,104 +1021,23 @@ tcp_init(void * handle, int size)
     nids_params.no_mem("tcp_init");
     return -1;
   }
-  impl -> max_stream = 3 * impl -> tcp_stream_table_size / 4;
-  impl -> streams_pool = (struct tcp_stream *) malloc((impl -> max_stream + 1) * sizeof(struct tcp_stream));
-  if (!impl -> streams_pool) {
-    nids_params.no_mem("tcp_init");
+  impl ->max_stream = 3 * impl ->tcp_stream_table_size / 4;
+  impl ->streams_pool = (struct tcp_stream *)rte_malloc("tcp",(impl ->max_stream + 1) * sizeof(struct tcp_stream),0);
+  if (!impl ->streams_pool) {
+ //   nids_params.no_mem("tcp_init");
     return -1;
   }
-  for (i = 0; i < impl -> max_stream; i++)
-    impl -> streams_pool[i].next_free = &(impl -> streams_pool[i + 1]);
-  impl -> streams_pool[max_stream].next_free = 0;
-  impl -> free_streams = streams_pool;
+  for (i = 0; i < impl -> impl ->max_stream; i++)
+    impl ->streams_pool[i].next_free = &(impl -> streams_pool[i + 1]);
+  impl ->streams_pool[impl ->max_stream].next_free = 0;
+  impl ->free_streams = impl ->streams_pool;
   init_hash();//define in hash.c can use hash.c 
-  while (impl -> nids_tcp_timeouts) {
-    tmp = impl -> nids_tcp_timeouts->next;
-    free(impl -> nids_tcp_timeouts);
-    impl -> nids_tcp_timeouts = tmp;
+  while (impl ->nids_tcp_timeouts) {
+    tmp = impl ->nids_tcp_timeouts->next;
+    rte_free(impl ->nids_tcp_timeouts);
+    impl ->nids_tcp_timeouts = tmp;
   }
   return 0;
-}
-
-#if HAVE_ICMPHDR
-#define STRUCT_ICMP struct icmphdr
-#define ICMP_CODE   code
-#define ICMP_TYPE   type
-#else
-#define STRUCT_ICMP struct icmp
-#define ICMP_CODE   icmp_code
-#define ICMP_TYPE   icmp_type
-#endif
-
-#ifndef ICMP_DEST_UNREACH
-#define ICMP_DEST_UNREACH ICMP_UNREACH
-#define ICMP_PROT_UNREACH ICMP_UNREACH_PROTOCOL
-#define ICMP_PORT_UNREACH ICMP_UNREACH_PORT
-#define NR_ICMP_UNREACH   ICMP_MAXTYPE
-#endif				
-
-
-void
-process_icmp(u_char * data)
-{
-  struct ip *iph = (struct ip *) data;
-  struct ip *orig_ip;
-  STRUCT_ICMP *pkt;
-  struct tcphdr *th;
-  struct half_stream *hlf;
-  int match_addr;
-  struct tcp_stream *a_tcp;
-  struct lurker_node *i;
-
-  int from_client;
-  /* we will use unsigned, to suppress warning; we must be careful with
-     possible wrap when substracting 
-     the following is ok, as the ip header has already been sanitized */
-  unsigned int len = ntohs(iph->ip_len) - (iph->ip_hl << 2);
-  
-  if (len < sizeof(STRUCT_ICMP))
-    return;
-  pkt = (STRUCT_ICMP *) (data + (iph->ip_hl << 2));
-  if (ip_compute_csum((char *) pkt, len))//checksum.c
-    return;
-  if (pkt->ICMP_TYPE != ICMP_DEST_UNREACH)
-    return;
-  /* ok due to check 7 lines above */  
-  len -= sizeof(STRUCT_ICMP);
-  // sizeof(struct icmp) is not what we want here
-  
-  if (len < sizeof(struct ip))
-    return;
-
-  orig_ip = (struct ip *) (((char *) pkt) + 8);
-  if (len < (unsigned)(orig_ip->ip_hl << 2) + 8)
-     return;
-  /* subtraction ok due to the check above */
-  len -= orig_ip->ip_hl << 2;
-  if ((pkt->ICMP_CODE & 15) == ICMP_PROT_UNREACH ||
-      (pkt->ICMP_CODE & 15) == ICMP_PORT_UNREACH)
-    match_addr = 1;
-  else
-    match_addr = 0;
-  if (pkt->ICMP_CODE > NR_ICMP_UNREACH)
-    return;
-  if (match_addr && (iph->ip_src.s_addr != orig_ip->ip_dst.s_addr))
-    return;
-  if (orig_ip->ip_p != IPPROTO_TCP)
-    return;
-  th = (struct tcphdr *) (((char *) orig_ip) + (orig_ip->ip_hl << 2));
-  if (!(a_tcp = find_stream(th, orig_ip, &from_client)))
-    return;
-  if (a_tcp->addr.dest == iph->ip_dst.s_addr)
-    hlf = &a_tcp->server;
-  else
-    hlf = &a_tcp->client;
-  if (hlf->state != TCP_SYN_SENT && hlf->state != TCP_SYN_RECV)
-    return;
-  a_tcp->nids_state = NIDS_RESET;
-  for (i = a_tcp->listeners; i; i = i->next)
-    (i->item) (a_tcp, &i->data);
-  nids_free_tcp_stream(a_tcp);
 }
 
 void addPacket(void *handle, struct rte_mbuf *m){
