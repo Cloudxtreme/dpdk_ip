@@ -7,8 +7,7 @@
 
 static u_char xor[12];
 static u_char perm[12];
-static void
-getrnd ()
+void getrnd (void)
 {
   struct timeval s;
   u_int *ptr;
@@ -35,7 +34,7 @@ getrnd ()
 
 }
 void
-init_hash ()
+init_hash (void)
 {
   int i, n, j;
   int p[12];

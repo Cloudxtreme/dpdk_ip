@@ -2,10 +2,24 @@
 #define TCP_H
 
 #include <sys/time.h>
+#include <netinet/in.h>
+#include <netinet/in_systm.h>
+#include <netinet/ip.h>
+#include <netinet/tcp.h>
+#include <netinet/ip_icmp.h>
 
 #include "module.h"
 
 #define mknew(x)	(x *)rte_malloc("mknew",sizeof(x),0)
+# define NIDS_JUST_EST 1
+# define NIDS_DATA 2
+# define NIDS_CLOSE 3
+# define NIDS_RESET 4
+# define NIDS_TIMED_OUT 5
+# define NIDS_EXITING   6	/* nids is exiting; last chance to get data */
+
+# define NIDS_DO_CHKSUM  0
+# define NIDS_DONT_CHKSUM 1
 
 
 struct skbuff {
@@ -78,29 +92,41 @@ struct tcp_stream
   struct tcp_stream *next_free;
   void *user;
 };
-
-
-static inline int
-before(u_int seq1, u_int seq2)
+struct tcp_timeout
 {
-  return ((int)(seq1 - seq2) < 0);
-}
+  struct tcp_stream *a_tcp;
+  struct timeval timeout;
+  struct tcp_timeout *next;
+  struct tcp_timeout *prev;
+};
+//the following func should use inside the tcp.c, just for the error no previous for func.
 
-static inline int
-after(u_int seq1, u_int seq2)
-{
-  return ((int)(seq2 - seq1) < 0);
-}
+static void del_tcp_closing_timeout(void *handle, struct tcp_stream * a_tcp);
+static void add_tcp_closing_timeout(void * handle, struct tcp_stream * a_tcp);
+void tcp_check_timeouts(void *handle, struct timeval *now);
+struct tcp_stream * nids_find_tcp_stream(void * handle, struct tuple4 *addr);
+void nids_free_tcp_stream(void * handle, struct tcp_stream * a_tcp);
+void add_to_ringpool(void * handle, struct tcp_stream * a_tcp);
+struct tcp_stream * find_stream(void *handle, struct tcphdr * this_tcphdr, struct ip * this_iphdr, int *from_client);
 
 
-int tcp_init(int);
-void tcp_exit(void);
-void process_tcp(u_char *, int);
-void process_icmp(u_char *);
-void tcp_check_timeouts(struct timeval *);
+//end
+
+
+static inline int before(u_int seq1, u_int seq2);
+
+
+static inline int after(u_int seq1, u_int seq2);
+
+
+
+int tcp_init(void *,int);
+void tcp_exit(void *);
+void process_tcp(void *, u_char *, int);
+//void process_icmp(u_char *);
 
 void addPacket(void * handle, struct rte_mbuf *m);
-void getStream(void * handle);//void * getStream maybe better.
+void *getStream(void * handle);//void * getStream maybe better.
 void realsePacket(void * handle, void * mem);
 void realseStream(void *handle, void *mem);
 void init(struct common_stream *pl, const char * name, void ** handle);
